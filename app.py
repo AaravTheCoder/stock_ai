@@ -1,5 +1,4 @@
 import time
-import os
 import requests
 import numpy as np
 import pandas as pd
@@ -14,7 +13,7 @@ from google.genai import types
 app = Flask(__name__, template_folder='templates')
 
 # Gemini API key & setup
-client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+client = genai.Client(api_key="AQ.Ab8RN6KWSoY3YUHZT1rM9wYFgFHw-gsrqK7fL1tjd0Ees9fAfg")
 
 # defined neural network architecture (hidden layers, inputs, etc)
 class StockLSTM(nn.Module):
