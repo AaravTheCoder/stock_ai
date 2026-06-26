@@ -85,17 +85,21 @@ def run_custom_ml_algorithm(ticker):
     except Exception as e:
         print(f"❌ PyTorch Pipeline Exception: {e}")
         return {"signal": "HOLD"}
+    # 5. FIXED APIS FETCH ENGINE WITH PROACTIVE DUAL-LOOKUP FALLBACK
 def fetch_cloudflare_worker_price(ticker):
     norm_sym = ticker.upper().strip()
     current_time = int(time.time() * 1000)
+    
     base_url = "https://stock-market-cache-api.kalaaarav.workers.dev/api/quote"
     query_parameters = {"symbol": norm_sym, "t": current_time}
     headers = {"User-Agent": "Android-Widget", "Accept": "application/json"}
+    
     try:
-        response = requests.get(base_url, params=query_parameters, headers=headers, timeout=3.0)
+        response = requests.get(base_url, params=query_parameters, headers=headers, timeout=5.0)
         if response.status_code == 200:
             json_data = response.json()
             source_data = json_data[norm_sym] if isinstance(json_data, dict) and norm_sym in json_data else json_data
+            
             raw_price = (source_data.get('c') or source_data.get('price') or source_data.get('regularMarketPrice') or source_data.get('currentPrice'))
             raw_pct = (source_data.get('dp') or source_data.get('changePercent') or 0)
             meta = source_data.get('meta', {}) if isinstance(source_data.get('meta'), dict) else {}
@@ -104,11 +108,32 @@ def fetch_cloudflare_worker_price(ticker):
             price = float(raw_price) if raw_price is not None else 0.0
             pct = float(raw_pct) if raw_pct is not None else 0.0
             currency = str(raw_currency).strip() if raw_currency else "USD"
+            
             if price > 0:
                 return {"price": price, "changePercent": pct, "currency": currency}
     except Exception as e:
-        print(f"Cloudflare Worker error: {e}")
+        print(f"Cloudflare Worker lookup skipped for {ticker}: {e}")
+        
+    # 🛡️ BULLETPROOF CRITICAL FALLBACK: If Cloudflare Worker returns empty, pull straight from yfinance attributes
+    try:
+        print(f"⚠️ Worker cache missed. Engaging yfinance direct fast quote backup for {ticker}...")
+        stock = yf.Ticker(norm_sym)
+        
+        # Access yfinance's fast_info matrix cache layout directly to bypass IP blocking bans
+        fast_info = getattr(stock, 'fast_info', {})
+        price = float(fast_info.get('last_price') or stock.history(period="1d")['Close'].iloc[-1])
+        pct = float(fast_info.get('regular_market_previous_close', 0))
+        pct_change = ((price - pct) / pct * 100) if pct > 0 else 0.0
+        currency = str(fast_info.get('currency') or "USD")
+        
+        if price > 0:
+            print(f"🎯 Direct lookup success for {ticker}: ${price} {currency}")
+            return {"price": price, "changePercent": pct_change, "currency": currency}
+    except Exception as fallback_error:
+        print(f"❌ Both primary and secondary pricing metrics offline for {ticker}: {fallback_error}")
+        
     return None
+
 def fetch_stock_news(ticker):
     try:
         stock = yf.Ticker(ticker)
