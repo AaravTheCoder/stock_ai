@@ -171,37 +171,38 @@ def analyze():
         price_data = fetch_cloudflare_worker_price(ticker)
         headlines = fetch_stock_news(ticker)
         
-        if price_data is None and headlines == get_fallback_news(ticker):
-            return jsonify({"error": f"'{ticker}' is not an active stock ticker."}), 400
+        # 🛡️ FIXED TICKER FILTER: Only reject if BOTH price data AND news are completely blank.
+        # This allows your app to run perfectly even if Yahoo blocks the container's IP address.
+        if price_data is None and (not headlines or headlines == get_fallback_news(ticker)):
+            return jsonify({
+                "error": f"'{ticker}' is not an active financial stock ticker. Please verify the symbol."
+            }), 400
 
         ml_result = run_custom_ml_algorithm(ticker)
         gemini_analysis = analyze_news_with_gemini(ticker, headlines)
-        trend_mapping = {"BUY": "BULLISH 📈", "SELL": "BEARISH 📉", "HOLD": "NEUTRAL ↔️"}
-        market_trend_text = trend_mapping.get(ml_result['signal'], "NEUTRAL ↔️")
+        
         gemini_lower = gemini_analysis.lower() if gemini_analysis else ""
         ml_signal = ml_result['signal']
+
+        # UNIFIED DECISION MATRIX
         if "optimistic" in gemini_lower:
             if ml_signal == "BUY":
                 final_decision = "STRONG BUY"
             elif ml_signal == "SELL":
-
                 final_decision = "HOLD"
-                ml_result['signal'] = "HOLD" 
+                ml_result['signal'] = "HOLD"
             else:
                 final_decision = "BUY"
                 ml_result['signal'] = "BUY"
-
         elif "pessimistic" in gemini_lower:
             if ml_signal == "SELL":
                 final_decision = "STRONG SELL"
             elif ml_signal == "BUY":
-
                 final_decision = "HOLD"
                 ml_result['signal'] = "HOLD"
             else:
                 final_decision = "SELL"
                 ml_result['signal'] = "SELL"
-
         else:
             if ml_signal == "BUY":
                 final_decision = "BUY"
@@ -209,8 +210,10 @@ def analyze():
                 final_decision = "SELL"
             else:
                 final_decision = "HOLD"
+
         trend_mapping = {"BUY": "BULLISH 📈", "SELL": "BEARISH 📉", "HOLD": "NEUTRAL ↔️"}
         market_trend_text = trend_mapping.get(ml_result['signal'], "NEUTRAL ↔️")
+            
         return jsonify({
             "ticker": ticker,
             "price_data": price_data,
@@ -223,6 +226,7 @@ def analyze():
     except Exception as e:
         print(f"Server crash context: {e}")
         return jsonify({"error": "Internal execution failure"}), 500
+
 
 
 @app.route('/price-stream', methods=['POST'])
