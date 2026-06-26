@@ -107,7 +107,7 @@
     </div>
 
     <script>
-        let priceIntervalId = null;
+                let priceIntervalId = null;
         let currentActiveTicker = "";
 
         async function analyzeStock() {
@@ -121,13 +121,14 @@
             resultDiv.style.display = 'none';
 
             try {
-                const response = await fetch(`/analyze?cb=${Date.now()}`, {
+                // 🌐 FIXED: Routing network fetch straight to your global Hugging Face compute cloud
+                const response = await fetch(`https://hf.space{Date.now()}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ ticker: ticker })
                 });
+                
                 const data = await response.json();
-
                 if (!response.ok) {
                     loading.style.display = 'none';
                     alert(data.error || "An error occurred during verification.");
@@ -136,22 +137,21 @@
 
                 updatePriceUI(data.price_data);
                 document.getElementById('liveDot').style.display = 'inline-block';
+                
                 const verdictEl = document.getElementById('finalVerdict');
                 verdictEl.innerText = "Recommendation: " + data.final_verdict;
                 verdictEl.className = "verdict " + data.final_verdict.toLowerCase().replace(" ", "-");
+                
                 document.getElementById('mlSignal').innerText = data.ml_signal;
                 document.getElementById('marketTrend').innerText = data.market_trend;
                 document.getElementById('geminiAnalysis').innerText = data.gemini_analysis;
                 document.getElementById('newsCount').innerText = data.news_headlines.length;
 
-                // fixed this, no more errors in sending to links
                 const listContainer = document.getElementById('newsList');
-                listContainer.innerHTML = ""; 
-                
+                listContainer.innerHTML = "";
                 if (data.news_headlines && Array.isArray(data.news_headlines)) {
                     data.news_headlines.forEach(article => {
                         const li = document.createElement('li');
-                        
                         let targetUrl = "https://yahoo.com" + currentActiveTicker;
                         let targetTitle = "Market Report Overview Coverages";
 
@@ -177,6 +177,7 @@
                                 targetTitle = article;
                             }
                         }
+
                         if (!targetUrl.startsWith('http')) {
                             targetUrl = "https://yahoo.com" + currentActiveTicker;
                         }
@@ -187,7 +188,7 @@
                         listContainer.appendChild(li);
                     });
                 }
-
+                
                 loading.style.display = 'none';
                 resultDiv.style.display = 'block';
                 priceIntervalId = setInterval(pollLivePrice, 5000);
@@ -201,7 +202,8 @@
         async function pollLivePrice() {
             if (!currentActiveTicker) return;
             try {
-                const response = await fetch(`/price-stream?cb=${Date.now()}`, {
+                // 🌐 FIXED: Streaming live polling loops directly to your Hugging Face background thread
+                const response = await fetch(`https://hf.space{Date.now()}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ ticker: currentActiveTicker })
