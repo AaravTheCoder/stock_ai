@@ -206,18 +206,21 @@ def home():
     return render_template('index.html', cache_buster=time.time())
 
 @app.route('/analyze', methods=['POST'])
+python@app.route('/analyze', methods=['POST'])
 def analyze():
     try:
+        # Check for both raw JSON body keys and query string attributes
         data = request.json or {}
-        ticker = data.get('ticker', '').upper().strip()
+        ticker = data.get('ticker') or request.args.get('ticker') or ""
+        ticker = str(ticker).upper().strip()
+        
         if not ticker:
-            return jsonify({"error": "No ticker provided"}), 400
+            return jsonify({"error": "Please provide a valid stock ticker symbol."}), 400
             
         price_data = fetch_cloudflare_worker_price(ticker)
         headlines = fetch_stock_news(ticker)
         
-        # 🛡️ FIXED TICKER FILTER: Only reject if BOTH price data AND news are completely blank.
-        # This allows your app to run perfectly even if Yahoo blocks the container's IP address.
+        # Guardrail check
         if price_data is None and (not headlines or headlines == get_fallback_news(ticker)):
             return jsonify({
                 "error": f"'{ticker}' is not an active financial stock ticker. Please verify the symbol."
@@ -269,8 +272,8 @@ def analyze():
             "final_verdict": final_decision
         })
     except Exception as e:
-        print(f"Server crash context: {e}")
-        return jsonify({"error": "Internal execution failure"}), 500
+        print(f"Extraction matrix log exception context: {e}")
+        return jsonify({"error": "Internal processing failure"}), 500
 
 
 
