@@ -206,7 +206,6 @@ def home():
     return render_template('index.html', cache_buster=time.time())
 
 @app.route('/analyze', methods=['POST'])
-python@app.route('/analyze', methods=['POST'])
 def analyze():
     try:
         # Check for both raw JSON body keys and query string attributes
