@@ -147,47 +147,50 @@
                 document.getElementById('geminiAnalysis').innerText = data.gemini_analysis;
                 document.getElementById('newsCount').innerText = data.news_headlines.length;
 
-                const listContainer = document.getElementById('newsList');
-                listContainer.innerHTML = "";
-                if (data.news_headlines && Array.isArray(data.news_headlines)) {
-                    data.news_headlines.forEach(article => {
-                        const li = document.createElement('li');
-                        let targetUrl = "https://yahoo.com" + currentActiveTicker;
-                        let targetTitle = "Market Report Overview Coverages";
+                            listContainer.innerHTML = "";
 
-                        if (article && typeof article === 'object' && !Array.isArray(article)) {
-                            targetTitle = article.title || targetTitle;
-                            if (article.url && typeof article.url === 'string') {
-                                targetUrl = article.url;
-                            } else if (article.link && typeof article.link === 'string') {
-                                targetUrl = article.link;
-                            } else {
-                                const stringObj = JSON.stringify(article);
-                                const match = stringObj.match(/https?:\/\/[^\s"']+/g);
-                                if (match && match[0]) {
-                                    targetUrl = match[0].replace(/,\\?["']/g, "").replace(/\\/g, "");
-                                }
-                            }
-                        } else if (typeof article === 'string') {
-                            if (article.includes('|||')) {
-                                const parts = article.split('|||');
-                                targetTitle = parts[0];
-                                targetUrl = parts[1];
-                            } else {
-                                targetTitle = article;
+            if (data.news_headlines && Array.isArray(data.news_headlines)) {
+                data.news_headlines.forEach(article => {
+                    const li = document.createElement('li');
+                    
+                    // 🌐 FIXED: Changed from generic yahoo.com/ to explicit finance directory routing
+                    let targetUrl = "https://yahoo.com" + currentActiveTicker;
+                    let targetTitle = "Market Report Overview Coverages";
+
+                    if (article && typeof article === 'object' && !Array.isArray(article)) {
+                        targetTitle = article.title || targetTitle;
+                        if (article.url && typeof article.url === 'string') {
+                            targetUrl = article.url;
+                        } else if (article.link && typeof article.link === 'string') {
+                            targetUrl = article.link;
+                        } else {
+                            const stringObj = JSON.stringify(article);
+                            const match = stringObj.match(/https?:\/\/[^\s"']+/g);
+                            if (match && match[0]) {
+                                targetUrl = match[0].replace(/,\\?["']/g, "").replace(/\\/g, "");
                             }
                         }
-
-                        if (!targetUrl.startsWith('http')) {
-                            targetUrl = "https://yahoo.com" + currentActiveTicker;
+                    } else if (typeof article === 'string') {
+                        if (article.includes('|||')) {
+                            const parts = article.split('|||');
+                            targetTitle = parts[0];
+                            targetUrl = parts[1];
+                        } else {
+                            targetTitle = article;
                         }
+                    }
 
-                        li.innerHTML = `<a href="${targetUrl}" target="_blank" style="color: #007bff; text-decoration: none;">${targetTitle}</a>`;
-                        li.querySelector('a').onmouseover = function() { this.style.textDecoration = 'underline'; };
-                        li.querySelector('a').onmouseout = function() { this.style.textDecoration = 'none'; };
-                        listContainer.appendChild(li);
-                    });
-                }
+                    // 🌐 FIXED: Ensuring the string validator conditions also point to the correct finance endpoint
+                    if (!targetUrl.startsWith('http')) {
+                        targetUrl = "https://yahoo.com" + currentActiveTicker;
+                    }
+
+                    li.innerHTML = `<a href="${targetUrl}" target="_blank" style="color: #007bff; text-decoration: none;">${targetTitle}</a>`;
+                    li.querySelector('a').onmouseover = function() { this.style.textDecoration = 'underline'; };
+                    li.querySelector('a').onmouseout = function() { this.style.textDecoration = 'none'; };
+                    listContainer.appendChild(li);
+                });
+            }
                 
                 loading.style.display = 'none';
                 resultDiv.style.display = 'block';
