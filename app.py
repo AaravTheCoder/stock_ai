@@ -160,12 +160,20 @@ def fetch_cloudflare_worker_price(ticker):
 
 def fetch_stock_news(ticker):
     try:
+        norm_sym = ticker.upper().strip()
+        
+        # Build browser simulation sessions to download news cleanly without getting banned
         session = requests.Session()
-        session.headers.update({'User-Agent': 'Mozilla/5.0'})
-        stock = yf.Ticker(ticker, session=session)
+        session.headers.update({
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+        })
+        
+        stock = yf.Ticker(norm_sym, session=session)
         news = getattr(stock, 'news', None)
         if not news or not isinstance(news, list):
-            return get_fallback_news(ticker)
+            return get_fallback_news(norm_sym)
+            
         headlines = []
         for n in news[:3]:
             if not isinstance(n, dict): continue
@@ -177,9 +185,9 @@ def fetch_stock_news(ticker):
                 clink = n.get('content', {}).get('clickThroughUrl')
                 link = clink.get('url') if isinstance(clink, dict) else clink
             if title:
-                url_str = str(link).strip() if link else f"https://yahoo.com{ticker}"
+                url_str = str(link).strip() if link else f"https://yahoo.com{norm_sym}"
                 headlines.append({"title": title, "url": url_str})
-        return headlines if headlines else get_fallback_news(ticker)
+        return headlines if headlines else get_fallback_news(norm_sym)
     except Exception:
         return get_fallback_news(ticker)
 
