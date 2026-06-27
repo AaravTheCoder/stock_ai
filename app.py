@@ -1,10 +1,12 @@
-import time
 import os
+import time
 import requests
 import numpy as np
 import pandas as pd
 from flask import Flask, request, jsonify, render_template
 import yfinance as yf
+
+# 1. IMPORT PYTORCH DEEP LEARNING FRAMEWORKS
 import torch
 import torch.nn as nn
 from sklearn.preprocessing import MinMaxScaler
@@ -13,10 +15,10 @@ from google.genai import types
 
 app = Flask(__name__, template_folder='templates')
 
-# Gemini API key & setup
+# 2. SETUP SECURE GEMINI ENVIRONMENT CLIENT
 client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
 
-# defined neural network architecture (hidden layers, inputs, etc)
+# 3. DEFINE THE PYTORCH LSTM NEURAL NETWORK ARCHITECTURE
 class StockLSTM(nn.Module):
     def __init__(self, input_dim=2, hidden_dim=32, num_layers=1, output_dim=3):
         super(StockLSTM, self).__init__()
@@ -29,41 +31,32 @@ class StockLSTM(nn.Module):
         h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_dim).to(x.device)
         c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_dim).to(x.device)
         out, _ = self.lstm(x, (h0, c0))
-        out = self.fc(out[:, -1, :])
+        out = self.fc(out[:, -1, :]) # Extract output profile of the last time step
         return out
 
-# 4. EXECUTING INLINE ML FORECASTING WITH BROWSER EMULATION SESSIONS (2-Input Clean Architecture)
+# 4. EXECUTING INLINE ML FORECASTING WITH BROWSER EMULATION SESSIONS (REAL DATA ONLY)
 def run_custom_ml_algorithm(ticker):
     try:
         norm_sym = ticker.upper().strip()
         
-        # 🛡️ ANTI-THROTTLING GATEWAY: Emulate a genuine local residential browser session
+        # 🛡️ ANTI-THROTTLING GATEWAY: Emulate a genuine local residential desktop browser session
         session = requests.Session()
         session.headers.update({
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.9',
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache'
+            'Accept-Language': 'en-US,en;q=0.9'
         })
         
-        # Pass the authorized browser session proxy queue state directly to yfinance
+        # Pass the authorized session profile straight into yfinance to clear firewalls
         stock = yf.Ticker(norm_sym, session=session)
         hist = stock.history(period="1y")
         
         if hist.empty or len(hist) < 60:
-            print(f"⚠️ Yahoo returned empty dataframe for {ticker} under data center block.")
+            print(f"⚠️ Yahoo historical data array for {ticker} is empty or blocked.")
             return {"signal": "HOLD"}
             
-        # 🛡️ BULLETPROOF COLUMN FILTER: Dynamically handles lowercase or uppercase names
-        close_col = 'Close' if 'Close' in hist.columns else 'close'
-        vol_col = 'Volume' if 'Volume' in hist.columns else 'volume'
-        
-        if close_col not in hist.columns or vol_col not in hist.columns:
-            return {"signal": "HOLD"}
-
-        # Extract only Close and Volume dynamically to match input_dim=2 exactly
-        df = hist[[close_col, vol_col]].copy()
+        # Build your exact clean 2D dataframe matrix features using real data
+        df = hist[['Close', 'Volume']].copy()
         
         scaler = MinMaxScaler(feature_range=(0, 1))
         scaled_data = scaler.fit_transform(df.values)
@@ -85,9 +78,9 @@ def run_custom_ml_algorithm(ticker):
         criterion = nn.CrossEntropyLoss()
         optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
         
+        # Train for your exact 45 epochs configuration
         model.train()
-        epochs = 45
-        for epoch in range(epochs):
+        for epoch in range(45):
             optimizer.zero_grad()
             outputs = model(X)
             loss = criterion(outputs, y)
@@ -105,47 +98,55 @@ def run_custom_ml_algorithm(ticker):
         signals_map = {0: "SELL", 1: "HOLD", 2: "BUY"}
         signal = signals_map.get(class_idx, "HOLD")
         
-        print(f"[PyTorch LSTM Model] Calculated real pattern for {ticker}: {signal}")
+        print(f"[PyTorch LSTM Model] Calculated pattern for {ticker}: {signal}")
         return {"signal": signal}
         
     except Exception as e:
-        print(f"❌ PyTorch Pipeline Exception: {e}")
+        print(f"❌ PyTorch Pipeline Exception bypassed via fallback: {e}")
         return {"signal": "HOLD"}
 
-# 5. FIXED APIS FETCH ENGINE WITH PROACTIVE DUAL-LOOKUP FALLBACK
+# 5. FETCH ENGINE WITH PROACTIVE DUAL-LOOKUP FALLBACKS
 def fetch_cloudflare_worker_price(ticker):
     norm_sym = ticker.upper().strip()
     current_time = int(time.time() * 1000)
-    base_url = "https://stock-market-cache-api.kalaaarav.workers.dev/api/quote"
+    
+    base_url = "https://workers.dev"
     query_parameters = {"symbol": norm_sym, "t": current_time}
     headers = {"User-Agent": "Android-Widget", "Accept": "application/json"}
+    
     try:
         response = requests.get(base_url, params=query_parameters, headers=headers, timeout=5.0)
         if response.status_code == 200:
             json_data = response.json()
             source_data = json_data[norm_sym] if isinstance(json_data, dict) and norm_sym in json_data else json_data
+            
             raw_price = (source_data.get('c') or source_data.get('price') or source_data.get('regularMarketPrice') or source_data.get('currentPrice'))
             raw_pct = (source_data.get('dp') or source_data.get('changePercent') or 0)
             meta = source_data.get('meta', {}) if isinstance(source_data.get('meta'), dict) else {}
             raw_currency = (source_data.get('currency') or source_data.get('currencyCode') or meta.get('currencyCode'))
+            
             price = float(raw_price) if raw_price is not None else 0.0
             pct = float(raw_pct) if raw_pct is not None else 0.0
             currency = str(raw_currency).strip() if raw_currency else "USD"
+            
             if price > 0:
                 return {"price": price, "changePercent": pct, "currency": currency}
-    except Exception as e:
-        print(f"Cloudflare Worker lookup skipped for {ticker}: {e}")
+    except Exception:
+        pass
         
-    # 🛡️ DUAL-LOOKUP FALLBACK: Grab real-time quotes using browser sessions if worker is rate-limited
+    # 🛡️ DUAL LOOKUP CRITICAL RECOVERY GATEWAY
     try:
+        print(f"⚠️ Primary node cache miss. Engaging cloaked yfinance fast direct quote for {ticker}...")
         session = requests.Session()
         session.headers.update({'User-Agent': 'Mozilla/5.0'})
         stock = yf.Ticker(norm_sym, session=session)
+        
         fast_info = getattr(stock, 'fast_info', {})
         price = float(fast_info.get('last_price') or stock.history(period="1d")['Close'].iloc[-1])
         pct = float(fast_info.get('regular_market_previous_close', 0))
         pct_change = ((price - pct) / pct * 100) if pct > 0 else 0.0
         currency = str(fast_info.get('currency') or "USD")
+        
         if price > 0:
             return {"price": price, "changePercent": pct_change, "currency": currency}
     except Exception:
