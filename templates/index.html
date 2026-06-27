@@ -201,7 +201,7 @@
         async function pollLivePrice() {
             if (!currentActiveTicker) return;
             try {
-                const response = await fetch(`https://hf.space{Date.now()}`, {
+                const response = await fetch(`https://kalaaarav-marketips-ai-backend.hf.space{Date.now()}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ ticker: currentActiveTicker })
