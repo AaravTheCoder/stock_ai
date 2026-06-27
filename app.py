@@ -110,7 +110,7 @@ def fetch_cloudflare_worker_price(ticker):
     norm_sym = ticker.upper().strip()
     current_time = int(time.time() * 1000)
     
-    base_url = "https://workers.dev"
+    base_url = "https://stock-market-cache-api.kalaaarav.workers.dev/api/quote"
     query_parameters = {"symbol": norm_sym, "t": current_time}
     headers = {"User-Agent": "Android-Widget", "Accept": "application/json"}
     
